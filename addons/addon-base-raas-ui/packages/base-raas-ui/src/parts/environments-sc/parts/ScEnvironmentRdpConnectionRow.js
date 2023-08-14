@@ -8,6 +8,7 @@ import { Button, Table, List, Label } from 'semantic-ui-react';
 import { displayError } from '@amzn/base-ui/dist/helpers/notification';
 
 import CopyToClipboard from '../../helpers/CopyToClipboard';
+import { stringify } from 'uuid';
 
 const openWindow = (url, windowFeatures) => {
   return window.open(url, '_blank', windowFeatures);
@@ -77,6 +78,21 @@ class ScEnvironmentRdpConnectionRow extends React.Component {
     _.forEach(entries, item => {
       if (item.publicDnsName) result.push({ value: item.publicDnsName, type: 'dns', scope: 'public', info: 'Public' });
       if (item.privateIp) result.push({ value: item.privateIp, type: 'ip', scope: 'private', info: 'Private' });
+    });
+
+    return result;
+  }
+
+  get dcvInfo() {
+    const entries = _.get(this.windowsRdpInfo, 'networkInterfaces');
+    if (_.isEmpty(entries)) return [];
+
+    const result = {};
+
+    _.forEach(entries, item => {
+      if (item.publicDnsName) {
+        result["url"] = "https://" + item.publicDnsName + ":8443";
+      };
     });
 
     return result;
@@ -173,6 +189,7 @@ class ScEnvironmentRdpConnectionRow extends React.Component {
     const item = this.connection;
     const windowsRdpInfo = this.windowsRdpInfo;
     const interfaces = this.networkInterfaces;
+    const dcvinfo = this.dcvInfo;
     const username = 'Administrator';
     const password = windowsRdpInfo.password;
     const showPassword = this.showPassword;
@@ -183,43 +200,38 @@ class ScEnvironmentRdpConnectionRow extends React.Component {
       <>
         <Table.Row key={`${item.id}__2`}>
           <Table.Cell className="p3">
-            <b>
-              Your Windows workspace can be accessed via an RDP client by using the DNS host name and credentials
-              defined below.
-            </b>
+            <p>There are two ways to connect to your RACE Windows Workspace</p>
+            <h4>Web Browser</h4>
+            <p>You can connect via your web browser</p>
+            <List as='ol'>
+              <List.Item as='li'>Follow <a href={dcvinfo.url} target="_blank" >this link</a> to access your workspace (accept the certificate error. It's expected)</List.Item>
+              <List.Item as='li'>Enter your credentials outlined below</List.Item>
+            </List>
+            <h4>RDP</h4>
+            <p>You can use any RDP client (Windows, macOS, or Linux). Enter host details then the credentials below</p>
             <List bulleted>
-              {!this.isAppStreamEnabled && (
-                <List.Item>
-                  The IP Address or DNS of the instance.{' '}
-                  {moreThanOne ? 'Ask your administrator if you are not sure which one to use:' : ''}
-                  <List>
-                    {_.map(interfaces, network => (
-                      <List.Item key={network.value} className="flex">
-                        {this.renderHostLabel(network)}
-                        <CopyToClipboard text={network.value} />
-                      </List.Item>
-                    ))}
-                  </List>
+              {_.map(interfaces, network => (
+                <List.Item key={network.value} className="flex">
+                  {this.renderHostLabel(network)}
+                  <CopyToClipboard text={network.value} />
                 </List.Item>
-              )}
-
-              <List.Item>
-                The username and password:
-                <List>
-                  <List.Item className="flex">
-                    {this.renderUsernameLabel(username)}
-                    <CopyToClipboard text={username} />
-                  </List.Item>
-                  <List.Item className="flex">
-                    {this.renderPasswordLabel(password)}
-                    <Button className="ml2" basic size="mini" onClick={this.toggleShowPassword}>
-                      {showPassword ? 'Hide' : 'Show'}
-                    </Button>
-                    <CopyToClipboard text={password} />
-                  </List.Item>
-                </List>
+              ))}
+            </List>
+            <h4>Credentials</h4>
+            <List>
+              <List.Item className="flex">
+                {this.renderUsernameLabel(username)}
+                <CopyToClipboard text={username} />
+              </List.Item>
+              <List.Item className="flex">
+                {this.renderPasswordLabel(password)}
+                <Button className="ml2" basic size="mini" onClick={this.toggleShowPassword}>
+                  {showPassword ? 'Hide' : 'Show'}
+                </Button>
+                <CopyToClipboard text={password} />
               </List.Item>
             </List>
+
             <div className="mt3">
               Additional information about connecting via RDP can be found in the documentation below:
             </div>
@@ -239,25 +251,27 @@ class ScEnvironmentRdpConnectionRow extends React.Component {
               </div>
             )}
           </Table.Cell>
-        </Table.Row>
+        </Table.Row >
 
-        {this.isAppStreamEnabled && windowsRdpInfo && (
-          <Table.Row>
-            <Table.Cell>
-              <Button
-                primary
-                size="mini"
-                onClick={this.handleConnect(connectionId)}
-                floated="right"
-                disabled={this.processingId}
-                loading={this.processingGetConnection}
-                data-testid="connect-to-workspace-button"
-              >
-                Connect
-              </Button>
-            </Table.Cell>
-          </Table.Row>
-        )}
+        {
+          this.isAppStreamEnabled && windowsRdpInfo && (
+            <Table.Row>
+              <Table.Cell>
+                <Button
+                  primary
+                  size="mini"
+                  onClick={this.handleConnect(connectionId)}
+                  floated="right"
+                  disabled={this.processingId}
+                  loading={this.processingGetConnection}
+                  data-testid="connect-to-workspace-button"
+                >
+                  Connect
+                </Button>
+              </Table.Cell>
+            </Table.Row>
+          )
+        }
       </>
     );
   }

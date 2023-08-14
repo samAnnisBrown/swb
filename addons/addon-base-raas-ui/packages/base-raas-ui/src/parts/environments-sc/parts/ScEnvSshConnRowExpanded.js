@@ -49,6 +49,20 @@ class ScEnvSshConnRowExpanded extends React.Component {
     return result;
   }
 
+  get dcvInfo() {
+    const entries = this.props.networkInterfaces;
+    if (_.isEmpty(entries)) return [];
+
+    const result = {};
+    _.forEach(entries, item => {
+      if (item.publicDnsName && !this.isAppStreamEnabled) {
+        result["url"] = "https://" + item.publicDnsName + ":8443";
+      }
+    });
+
+    return result;
+  }
+
   get environment() {
     return this.props.scEnvironment;
   }
@@ -155,9 +169,9 @@ class ScEnvSshConnRowExpanded extends React.Component {
           </Grid>
           {!this.isAppStreamEnabled && (
             <div className="mt3">
-              Example:
+              And here's an example SSH command to connect to your workspace:
               <Segment className="mt2">
-                {example} <CopyToClipboard text={example} className="ml2 mt0" />
+                {example} <CopyToClipboard text={example} className="ml0 mt0" />
               </Segment>
             </div>
           )}
@@ -203,28 +217,43 @@ class ScEnvSshConnRowExpanded extends React.Component {
 
   renderInfo() {
     const interfaces = this.networkInterfaces;
+    const dcvinfo = this.dcvInfo
+    const keyName = this.keyName;
     const moreThanOne = _.size(interfaces) > 1;
+    const sshCommand = `ssh -i '${keyName}.pem' ec2-user@${_.get(_.first(interfaces), 'value')}`;
+    const getPasswordCommand = `ssh -i '${keyName}.pem' ec2-user@${_.get(_.first(interfaces), 'value')} /race/get_password.sh`;
 
     return (
       <div>
-        <b>You&apos;ll need two pieces of information to connect to this research workspace.</b>
-        <List bulleted>
-          <List.Item>
-            The IP Address or DNS of the instance.{' '}
-            {moreThanOne ? 'Ask your administrator if you are not sure which one to use:' : ''}
-            <List>
-              {_.map(interfaces, network => (
-                <List.Item key={network.value} className="flex">
-                  {this.renderHostLabel(network)}
-                  <CopyToClipboard text={network.value} />
-                </List.Item>
-              ))}
-            </List>
-          </List.Item>
-          <List.Item>The SSH private key. You downloaded the private key when you created the SSH key.</List.Item>
+        <p>There are two ways to connect to your RACE Linux Workspace.</p>
+        <h4>Desktop (GUI)</h4>
+        <p>You can connect to a GUI in your web browser.</p>
+        <List as='ol'>
+          <List.Item as='li'>Make sure you have your <b>private key</b></List.Item>
+          <List.Item as='li'>Copy and run this <b>ssh command</b>[1]<CopyToClipboard text={getPasswordCommand} className="ml0 mt0" /> to retrieve a <em>username</em> and <em>password</em>[2]</List.Item>
+          <List.Item as='li'>Enter them at <a href={dcvinfo.url} target="_blank" >this link</a> to access your workspace (accept the certificate error. It's expected)</List.Item>
         </List>
+        <h4>SSH (Terminal)</h4>
+        <p>You can connect via SSH directly.</p>
+        <List as='ol'>
+          <List.Item as='li'>Make sure you have your <b>private key</b></List.Item>
+          <List.Item as='li'>Copy and run this <b>ssh command</b>[1]<CopyToClipboard text={sshCommand} className="ml0 mt0" /></List.Item>
+        </List>
+        <b>Host details of your workspace are as follows should you need them:</b>
+        <List>
+          {_.map(interfaces, network => (
+            <List.Item key={network.value} className="flex">
+              {this.renderHostLabel(network)}
+              <CopyToClipboard text={network.value} />
+            </List.Item>
+          ))}
+        </List>
+        <p>
+          <em>[1] - You may need to modify the command to point to the location of your private key</em><br></br>
+          <em>[2] - You can save this password for future use.  You can use it to connect to SSH also.</em>
+        </p>
         <div className="mt3">
-          Connecting to your research workspace depends on the operating system you are connecting from.
+          If you need more help, these links go into more detail on how to SSH from your operating systems
         </div>
         <List bulleted>
           <List.Item
@@ -261,7 +290,7 @@ class ScEnvSshConnRowExpanded extends React.Component {
     return (
       <div className="center">
         <div className="mb1">
-          You have <br /> <b>{countDown}</b> <br /> seconds to connect
+          You have <br /> <b>{countDown}</b> <br /> seconds to connect.  You can avoid this timeout once you generate a password.  See the Desktop (GUI) instructions.
         </div>
       </div>
     );

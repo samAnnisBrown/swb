@@ -156,6 +156,10 @@ Resources:
                     s3:prefix: !Sub
                       - '${S3Prefix}/*'
                       - S3Prefix: !Select [3, !Split ['/', !Ref EnvironmentInstanceFiles]]
+              # Allow NICE DCV Licenses
+              - Effect: 'Allow'
+                Action: 's3:GetObject'
+                Resource: !Sub 'arn:aws:s3:::dcv-license.${AWS::Region}/*'
       PermissionsBoundary: !Ref InstanceRolePermissionBoundary
 
   InstanceProfile:
@@ -183,13 +187,14 @@ Resources:
             ToPort: -1
             CidrIp: !Ref AccessFromCIDRBlock
       SecurityGroupIngress:
-        - !If
-          - AppStreamEnabled
-          - !Ref "AWS::NoValue"
-          - IpProtocol: tcp
-            FromPort: 3389
-            ToPort: 3389
-            CidrIp: !Ref AccessFromCIDRBlock
+        - IpProtocol: tcp
+          FromPort: 3389
+          ToPort: 3389
+          CidrIp: !Ref AccessFromCIDRBlock
+        - IpProtocol: tcp
+          FromPort: 8443
+          ToPort: 8443
+          CidrIp: !Ref AccessFromCIDRBlock
       Tags:
         - Key: Name
           Value: !Join ['-', [Ref: Namespace, 'ec2-sg']]
@@ -293,6 +298,10 @@ Resources:
           # Create working directory if doesn't already exist
           New-Item -ItemType Directory -Force -Path C:\workdir
           cd C:\workdir
+          
+          # Install NICE DCV
+          Invoke-WebRequest -Uri "https://d1uj6qtbmh3dt5.cloudfront.net/2023.0/Servers/nice-dcv-server-x64-Release-2023.0-15487.msi" -OutFile dcv_install.msi
+          msiexec.exe /i dcv_install.msi AUTOMATIC_SESSION_OWNER=Administrator /quiet /norestart /l*v dcv_install_msi.log
 
           # Initialise the raid array
           Add-Content diskpart.txt "select disk 1"
@@ -395,9 +404,6 @@ Outputs:
     Description: IAM role assumed by the EC2 workspace instance
     Value: !GetAtt IAMRole.Arn
 
-  #  Connection related outputs. These outputs need to have prefix "MetaConnection"
-  #  The "connections" are derived based on the CFN outputs as follows.
-  #
   #  CFN outputs with the OutputKey having format "MetaConnection<ConnectionAttrib>" or "MetaConnection<N><ConnectionAttrib>"
   #  are used for extracting connection information.
   #  - If the environment has only one connection then it can have outputs with "MetaConnection<ConnectionAttrib>" format.
@@ -424,7 +430,7 @@ Outputs:
   #
   MetaConnection1Name:
     Description: Name of the connection
-    Value: RDP to EC2 Windows Instance
+    Value: Connect to EC2 Windows Instance
 
   MetaConnection1InstanceId:
     Description: EC2 Windows Instance Id

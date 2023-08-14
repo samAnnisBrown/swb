@@ -136,6 +136,10 @@ Resources:
                     s3:prefix: !Sub
                       - '${S3Prefix}/*'
                       - S3Prefix: !Select [3, !Split ['/', !Ref EnvironmentInstanceFiles]]
+              # Allow NICE DCV Licenses
+              - Effect: 'Allow'
+                Action: 's3:GetObject'
+                Resource: !Sub 'arn:aws:s3:::dcv-license.${AWS::Region}/*'
       PermissionsBoundary: !Ref InstanceRolePermissionBoundary
 
   InstanceProfile:
@@ -184,6 +188,13 @@ Resources:
             FromPort: 443
             ToPort: 443
             CidrIp: !Ref AccessFromCIDRBlock
+        - !If
+          - AppStreamEnabled
+          - !Ref "AWS::NoValue"
+          - IpProtocol: tcp
+            FromPort: 8443
+            ToPort: 8443
+            CidrIp: !Ref AccessFromCIDRBlock
       Tags:
         - Key: Name
           Value: !Join ['-', [Ref: Namespace, 'ec2-sg']]
@@ -230,8 +241,28 @@ Resources:
           chmod 500 "/tmp/get_bootstrap.sh"
           /tmp/get_bootstrap.sh "${EnvironmentInstanceFiles}" '${S3Mounts}'
 
-          # Signal result to CloudFormation
+          # Allow password auth in ssh
+
+          mkdir /race
+          # Install Gnome3 Desktop and NICE DCV
+          aws s3 cp "${EnvironmentInstanceFiles}/install_dcv.sh" "/race"
+          chmod +x /race/install_dcv.sh
+          /race/install_dcv.sh
+          
+          # Download Get-Password Script
+          aws s3 cp "${EnvironmentInstanceFiles}/get_password.sh" "/race"
+          chown ec2-user:ec2-user /race/get_password.sh
+          chmod +x /race/get_password.sh
+
+          # Allow the use of either public key (EC2 Instance Connect) or password auth
+          PasswordAuthentication no
+          sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
+          sudo systemctl restart sshd
+
+          # Signal result to CloudFormation, then reboot server to finalise Gnome/DCV Install
           /opt/aws/bin/cfn-signal -e $? --stack "${AWS::StackName}" --resource "EC2Instance" --region "${AWS::Region}"
+          sleep 20
+          reboot
 
 Outputs:
   Ec2WorkspaceDnsName:
@@ -280,7 +311,7 @@ Outputs:
   #
   MetaConnection1Name:
     Description: Name for connection
-    Value: SSH to Main EC2 instance
+    Value: Connect to Linux EC2 Instance
 
   MetaConnection1InstanceId:
     Description: EC2 Linux Instance Id

@@ -89,7 +89,7 @@ describe('Create URL scenarios', () => {
           preAuthStreamingUrl: 'https://appstream2.us-east-1.aws.amazon.com/authenticate?parameters=',
           redirectStreamingUrl:
             'appstream2.us-east-1.aws.amazon.com/#/streaming/?reference=fleet%2Finitial-stack-1629237287942-ServiceWorkbenchFleet&app=',
-          expected: { scheme: 'rdp', name: 'RDP to EC2 Windows Instance' },
+          expected: { scheme: 'rdp', name: 'Connect to EC2 Windows Instance' },
         },
       ],
       [
@@ -101,7 +101,7 @@ describe('Create URL scenarios', () => {
           preAuthStreamingUrl: 'https://appstream2.us-east-1.aws.amazon.com/authenticate?parameters=',
           redirectStreamingUrl:
             'appstream2.us-east-1.aws.amazon.com/#/streaming/?reference=fleet%2Finitial-stack-1629237287942-ServiceWorkbenchFleet&app=',
-          expected: { scheme: 'ssh', name: 'SSH to Main EC2 instance' },
+          expected: { scheme: 'ssh', name: 'Connect to Linux EC2 instance' },
         },
       ],
     ];
