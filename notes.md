@@ -17,3 +17,12 @@ Run the following command:
 > pnpm run babel:watch
 
 This will ensure that code changes are immediately compiled and updated in the UI
+
+Serverless Documentation
+- https://www.serverless.com/framework/docs/getting-started/
+- https://www.serverless.com/framework/docs/providers/aws/guide/intro
+
+## API Locations ##
+main/solution/backend/serverless.yml # Declares the backend service (API) and its configuration
+main/solution/backend/config/infra/functions.yml # Referenced from serverless.yml - defines API lamdda functions and API
+main/solution/backend/src/lambdas/api-handler/handler.js # The main API handler function
